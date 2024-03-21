@@ -115,17 +115,18 @@ static void *json_thread_func(void *p)
 
 					failed = 0;
 				} else {
-					fprintf(stderr, "json send failed, retrying in 33ms\n");
-					usleep(33 * 1000); /* Natural rate limit if the post fails */
-					failed += 33;
+					fprintf(stderr, "json send failed, retrying in 250ms\n");
+					usleep(250 * 1000); /* Natural rate limit if the post fails */
+					failed += 250;
+
+                                        if (failed >= 2000) {
+                                                /* Back off for 30 seconds before we try again. */
+                                                json_next_post_time = now + 1;
+                                                break;
+                                        }
+                                        continue;
 				}
 				workdone++;
-
-				if (failed >= 2000) {
-					/* Back off for 30 seconds before we try again. */
-					json_next_post_time = now + 1;
-					break;
-				}
 
 				/* Success, take this of the queue and destroy it */
 				item = json_queue_peek(ctx);
@@ -863,7 +864,7 @@ int tsprobe(int argc, char *argv[])
 			ctx->lastSocketReport = 0;
 		}
 
-		usleep(1 * 100);
+		usleep(1000 * 1000);
 	}
 
 	discovered_items_abort(ctx);
