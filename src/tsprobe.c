@@ -115,9 +115,9 @@ static void *json_thread_func(void *p)
 
 					failed = 0;
 				} else {
-					fprintf(stderr, "json send failed, retrying in 250ms\n");
-					usleep(250 * 1000); /* Natural rate limit if the post fails */
-					failed += 250;
+					fprintf(stderr, "json send failed, retrying in 33ms\n");
+					usleep(33 * 1000); /* Natural rate limit if the post fails */
+					failed += 33;
 				}
 				workdone++;
 
@@ -863,7 +863,7 @@ int tsprobe(int argc, char *argv[])
 			ctx->lastSocketReport = 0;
 		}
 
-		usleep(1000 * 1000);
+		usleep(1 * 100);
 	}
 
 	discovered_items_abort(ctx);
