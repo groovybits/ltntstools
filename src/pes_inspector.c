@@ -13,9 +13,8 @@
 #include <libltntstools/ltntstools.h>
 #include "ffmpeg-includes.h"
 #include "source-avio.h"
-#include "../../ffmpeg/libavutil/internal.h"
 
-#define H264_IFRAME_THUMBNAILING 1
+#define H264_IFRAME_THUMBNAILING 0
 
 #if H264_IFRAME_THUMBNAILING
 
