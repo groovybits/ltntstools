@@ -14,7 +14,9 @@
 #include "ffmpeg-includes.h"
 #include "source-avio.h"
 
-#define H264_IFRAME_THUMBNAILING 0
+#define SUINT uint32_t
+
+#define H264_IFRAME_THUMBNAILING 1
 
 #if H264_IFRAME_THUMBNAILING
 
@@ -374,7 +376,7 @@ static int ltntstools_h264_iframe_thumbnailer_avframe_encode(struct ltntstools_h
 			fclose(fh);
 		}
 
-		g_nextThumbnailTime = time(0) + 5;
+		g_nextThumbnailTime = time(0) + 1;
 
         av_packet_unref(ctx->dec.pkt);
     }
@@ -583,7 +585,9 @@ static void *callback(void *userContext, struct ltn_pes_packet_s *pes)
 		_pes_packet_measure_nal_throughput(ctx, pes, &ctx->throughput);
 	} else {
 		/* Else, dump all the PES packets */
-		ltn_pes_packet_dump(pes, "");
+                if (ctx->verbose > 2) {
+		    ltn_pes_packet_dump(pes, "");
+                }
 	}
 
 	if (ctx->writeES_h265) {
