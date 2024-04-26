@@ -97,7 +97,7 @@ static void nal_throughput_report(struct nal_throughput_s *ctx, time_t now, int 
 	int64_t summed_bps = 0;
 
 	for (int i = 0; i < MAX_NALS; i++) {
-		struct nal_statistic_s *nt = &ctx->stats[i]; 
+		struct nal_statistic_s *nt = &ctx->stats[i];
 		if (!nt->enabled)
 			continue;
 
@@ -419,7 +419,7 @@ static void ltntstools_h264_iframe_thumbnailer_decode(struct ltntstools_h264_ifr
 			AVFrame *frm;
 
 			/* Encode the full frame using a quality scale of 1..31 where 1 is best */
-			ltntstools_h264_iframe_thumbnailer_avframe_encode(ctx, frame, 10);
+			//ltntstools_h264_iframe_thumbnailer_avframe_encode(ctx, frame, 10);
 #if 1
 			/* Created a 160x90 scaled version */
 			ltntstools_h264_iframe_thumbnailer_avframe_scale_to_N(ctx, frame, &frm, 160, 90);
@@ -488,12 +488,12 @@ static void _pes_packet_measure_nal_throughput(struct tool_ctx_s *ctx, struct lt
 
 	throughput_hires_write_i64(ctx->throughput.throughputCtx, 0, pes->dataLengthBytes * 8, NULL);
 
-    /* Pes payload may contain zero or more complete H264 nals. */ 
+    /* Pes payload may contain zero or more complete H264 nals. */
     int offset = -1, lastOffset = 0;
 	unsigned int nalType = 0;
 	int ret;
 #define LOCAL_DEBUG 0
-#if LOCAL_DEBUG		
+#if LOCAL_DEBUG
 	const char *nalName = NULL;
 #endif
     while (1) {
@@ -511,18 +511,18 @@ static void _pes_packet_measure_nal_throughput(struct tool_ctx_s *ctx, struct lt
 		}
 		if (ctx->doH264NalThroughput) {
 	  		nalType = pes->data[offset + 3] & 0x1f;
-#if LOCAL_DEBUG		
+#if LOCAL_DEBUG
 			nalName = h264Nals_lookupName(nalType);
 #endif
 		} else
 		if (ctx->doH265NalThroughput) {
 			nalType = (pes->data[offset + 3] >> 1) & 0x3f;
-#if LOCAL_DEBUG		
+#if LOCAL_DEBUG
 			nalName = h265Nals_lookupName(nalType);
 #endif
 		}
 
-#if LOCAL_DEBUG		
+#if LOCAL_DEBUG
         for (int i = 0; i < 5; i++) {
             printf("%02x ", *(pes->data + offset + i));
         }
@@ -540,7 +540,7 @@ static void _pes_packet_measure_nal_throughput(struct tool_ctx_s *ctx, struct lt
 
 		/* On a per NAL basis, maintain a throughput */
 		throughput_hires_write_i64(prevNal->throughputCtx, 0, (offset - lastOffset) * 8, NULL);
-	
+
 		lastOffset = offset;
 		prevNal = nt;
 	}
@@ -694,7 +694,7 @@ static void *callback(void *userContext, struct ltn_pes_packet_s *pes)
 static void *_avio_raw_callback(void *userContext, const uint8_t *pkts, int packetCount)
 {
 	struct tool_ctx_s *ctx = (struct tool_ctx_s *)userContext;
-	
+
 	ltntstools_pes_extractor_write(ctx->pe, pkts, packetCount);
 
 	return NULL;
@@ -840,7 +840,7 @@ int pes_inspector(int argc, char *argv[])
 		fprintf(stderr, "\nUnable to allocate pes_extractor object.\n\n");
 		exit(1);
 	}
-	
+
 	ltntstools_pes_extractor_set_skip_data(ctx->pe, headersOnly);
 
 	struct ltntstools_source_avio_callbacks_s cbs = { 0 };
