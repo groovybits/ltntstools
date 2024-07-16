@@ -20,7 +20,7 @@ static uint16_t _compute_stream_hash(struct iphdr *iphdr, struct udphdr *udphdr)
 #ifdef __linux__
 	uint32_t dstaddr = ntohl(iphdr->daddr);
 #endif
-	uint16_t dstport = ntohs(udphdr->uh_dport);
+	uint16_t dstport = ntohs(udphdr->dest);
 	return hash_index_cal_hash(dstaddr, dstport);
 }
 
@@ -120,9 +120,9 @@ struct discovered_item_s *discovered_item_alloc(struct tool_context_s *ctx, stru
 		dstaddr.s_addr = di->iphdr.ip_dst.s_addr;
 #endif
 
-		sprintf(di->srcaddr, "%s:%d", inet_ntoa(srcaddr), ntohs(di->udphdr.uh_sport));
-		sprintf(di->dstaddr, "%s:%d", inet_ntoa(dstaddr), ntohs(di->udphdr.uh_dport));
-		di->dstport = ntohs(di->udphdr.uh_dport);
+		sprintf(di->srcaddr, "%s:%d", inet_ntoa(srcaddr), ntohs(di->udphdr.source));
+		sprintf(di->dstaddr, "%s:%d", inet_ntoa(dstaddr), ntohs(di->udphdr.dest));
+		di->dstport = ntohs(di->udphdr.dest);
 
 		di->iat_lwm_us = 50000000;
 		di->iat_hwm_us = -1;
@@ -227,9 +227,9 @@ static int is_di_duplicate(struct discovered_item_s *x, struct discovered_item_s
 		return 0;
 	if (x->iphdr.daddr != y->iphdr.daddr)
 		return 0;
-	if (x->udphdr.uh_sport != y->udphdr.uh_sport)
+	if (x->udphdr.source != y->udphdr.source)
 		return 0;
-	if (x->udphdr.uh_dport != y->udphdr.uh_dport)
+	if (x->udphdr.dest != y->udphdr.dest)
 		return 0;
 
 #endif
@@ -238,9 +238,9 @@ static int is_di_duplicate(struct discovered_item_s *x, struct discovered_item_s
 		return 0;
 	if (x->iphdr.ip_dst.s_addr != y->iphdr.ip_dst.s_addr)
 		return 0;
-	if (x->udphdr.uh_sport != y->udphdr.uh_sport)
+	if (x->udphdr.source != y->udphdr.source)
 		return 0;
-	if (x->udphdr.uh_dport != y->udphdr.uh_dport)
+	if (x->udphdr.dest != y->udphdr.dest)
 		return 0;
 #endif
 
@@ -251,17 +251,17 @@ static int is_di_dst_duplicate(struct discovered_item_s *x, struct discovered_it
 {
 #ifdef __linux__
 	uint64_t a = (uint64_t)ntohl(x->iphdr.daddr) << 16;
-	a |= (x->udphdr.uh_dport);
+	a |= (x->udphdr.dest);
 
 	uint64_t b = (uint64_t)ntohl(y->iphdr.daddr) << 16;
-	b |= (y->udphdr.uh_dport);
+	b |= (y->udphdr.dest);
 #endif
 #ifdef __APPLE__
 	uint64_t a = (uint64_t)ntohl(x->iphdr.ip_dst.s_addr) << 16;
-	a |= (x->udphdr.uh_dport);
+	a |= (x->udphdr.dest);
 
 	uint64_t b = (uint64_t)ntohl(y->iphdr.ip_dst.s_addr) << 16;
-	b |= (y->udphdr.uh_dport);
+	b |= (y->udphdr.dest);
 #endif
 
 	if (a == b)
@@ -279,17 +279,17 @@ static void discovered_item_insert(struct tool_context_s *ctx, struct discovered
 	xorg_list_for_each_entry(e, &ctx->list, list) {
 #ifdef __linux__
 		uint64_t a = (uint64_t)ntohl(e->iphdr.daddr) << 16;
-		a |= (e->udphdr.uh_dport);
+		a |= (e->udphdr.dest);
 
 		uint64_t b = (uint64_t)ntohl(di->iphdr.daddr) << 16;
-		b |= (di->udphdr.uh_dport);
+		b |= (di->udphdr.dest);
 #endif
 #ifdef __APPLE__
 		uint64_t a = (uint64_t)ntohl(e->iphdr.ip_dst.s_addr) << 16;
-		a |= (e->udphdr.uh_dport);
+		a |= (e->udphdr.dest);
 
 		uint64_t b = (uint64_t)ntohl(di->iphdr.ip_dst.s_addr) << 16;
-		b |= (di->udphdr.uh_dport);
+		b |= (di->udphdr.dest);
 #endif
 		if (a < b)
 			continue;
@@ -1105,19 +1105,13 @@ void discovered_item_detailed_file_summary(struct tool_context_s *ctx, struct di
 	time(&now);
 	localtime_r(&now, &tm);
 
-	char line[256];
-	char ts[24];
-        sprintf(ts, "%04d%02d%02d-%02d%02d%02d",
-                tm.tm_year + 1900,
-                tm.tm_mon  + 1,
-                tm.tm_mday,
-                tm.tm_hour,
-                tm.tm_min,
-                tm.tm_sec);
+	char ts_date[16] = {0};
+	char ts_time[16] = {0};
+	strftime(ts_date, sizeof ts_date, "%Y-%m-%d", &tm);
+	strftime(ts_time, sizeof ts_time, "%H:%M:%S", &tm);
 
 	if (write_banner) {
-		sprintf(line, "@Report begins %s\n", ts);
-		write(fd, line, strlen(line));
+		dprintf(fd, "@Report begins %s %s\n", ts_date, ts_time);
 	}
 
 	uint32_t bps = 0;
@@ -1144,9 +1138,9 @@ void discovered_item_detailed_file_summary(struct tool_context_s *ctx, struct di
 
 	/* Query the LTN encoder latency, if it exists */
 	struct ltntstools_pat_s *m = NULL;
-	char enclat[8];
+	char enclat[32];
 	if (ltntstools_streammodel_query_model(di->streamModel, &m) == 0) {
-		
+
 		for (int p = 0; p < m->program_count; p++) {
 
 			unsigned int major, minor, patch;
@@ -1169,8 +1163,9 @@ void discovered_item_detailed_file_summary(struct tool_context_s *ctx, struct di
 		ltntstools_pat_free(m);
 	}
 
-	sprintf(line, "time=%s,nic=%s,bps=%d,mbps=%.2f,tspacketcount=%" PRIu64 ",ccerrors=%" PRIu64 "%s,src=%s,dst=%s,dropped=%d/%d,iat1000=%d%s,br100=%d,br10=%d,flags=%s,enclat=%s\n",
-		ts,
+	dprintf(fd, "date=%s,time=%s,nic=%s,bps=%d,mbps=%.2f,tspacketcount=%" PRIu64 ",ccerrors=%" PRIu64 "%s,src=%s,dst=%s,dropped=%d/%d,iat1000=%d%s,br100=%d,br10=%d,flags=%s,enclat=%s\n",
+		ts_date,
+		ts_time,
 		ctx->ifname,
 		bps,
 		mbps,
@@ -1187,8 +1182,6 @@ void discovered_item_detailed_file_summary(struct tool_context_s *ctx, struct di
 		di->bitrate_hwm_us_100ms_last_nsecond * 10,
 		di->warningIndicatorLabel,
 		enclat);
-
-	write(fd, line, strlen(line));
 
 	/* Write out the entire PID state. */
 	discovered_item_fd_per_pid_report(ctx, di, fd);
@@ -1234,19 +1227,13 @@ void discovered_item_file_summary(struct tool_context_s *ctx, struct discovered_
 	time(&now);
 	localtime_r(&now, &tm);
 
-	char line[256];
-	char ts[24];
-        sprintf(ts, "%04d%02d%02d-%02d%02d%02d",
-                tm.tm_year + 1900,
-                tm.tm_mon  + 1,
-                tm.tm_mday,
-                tm.tm_hour,
-                tm.tm_min,
-                tm.tm_sec);
+	char ts_date[16] = {0};
+	char ts_time[16] = {0};
+	strftime(ts_date, sizeof ts_date, "%Y-%m-%d", &tm);
+	strftime(ts_time, sizeof ts_time, "%H:%M:%S", &tm);
 
 	if (write_banner) {
-		sprintf(line, "@Report begins %s\n", ts);
-		write(fd, line, strlen(line));
+		dprintf(fd, "@Report begins %s %s\n", ts_date, ts_time);
 	}
 
 	uint32_t bps = 0;
@@ -1273,9 +1260,9 @@ void discovered_item_file_summary(struct tool_context_s *ctx, struct discovered_
 
 	/* Query the LTN encoder latency, if it exists */
 	struct ltntstools_pat_s *m = NULL;
-	char enclat[8];
+	char enclat[32];
 	if (ltntstools_streammodel_query_model(di->streamModel, &m) == 0) {
-		
+
 		for (int p = 0; p < m->program_count; p++) {
 
 			unsigned int major, minor, patch;
@@ -1298,8 +1285,9 @@ void discovered_item_file_summary(struct tool_context_s *ctx, struct discovered_
 		ltntstools_pat_free(m);
 	}
 
-	sprintf(line, "time=%s,nic=%s,bps=%d,mbps=%.2f,tspacketcount=%" PRIu64 ",ccerrors=%" PRIu64 "%s,src=%s,dst=%s,dropped=%d/%d,iat1000=%d%s,br100=%d,br10=%d,flags=%s,enclat=%s\n",
-		ts,
+	dprintf(fd, "date=%s,time=%s,nic=%s,bps=%d,mbps=%.2f,tspacketcount=%" PRIu64 ",ccerrors=%" PRIu64 "%s,src=%s,dst=%s,dropped=%d/%d,iat1000=%d%s,br100=%d,br10=%d,flags=%s,enclat=%s\n",
+		ts_date,
+		ts_time,
 		ctx->ifname,
 		bps,
 		mbps,
@@ -1316,7 +1304,6 @@ void discovered_item_file_summary(struct tool_context_s *ctx, struct discovered_
 		di->bitrate_hwm_us_100ms_last_nsecond * 10,
 		di->warningIndicatorLabel,
 		enclat);
-	write(fd, line, strlen(line));
 
 	close(fd);
 }

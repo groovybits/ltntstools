@@ -38,9 +38,7 @@ static void pkt_handler(u_char *tmp, struct pcap_pkthdr *hdr, u_char *buf)
 {
 	packetCount++;
 
-	struct timeval diff;
-	ltn_histogram_timeval_subtract(&diff, &hdr->ts, &lastPacketTime);
-	int diffus = ltn_histogram_timeval_to_us(&diff);
+	int diffus = ltn_timeval_subtract_us(&hdr->ts, &lastPacketTime);
 
 	ltn_histogram_interval_update_with_value(packetIntervals, diffus / 1000);
 
@@ -122,17 +120,17 @@ static void pkt_handler(u_char *tmp, struct pcap_pkthdr *hdr, u_char *buf)
 
 		printf("%s:%d -> %s:%d  = ",
 #if defined(__APPLE__)
-			inet_ntoa(ip->ip_src), ntohs(udp->uh_sport),
-			dst, ntohs(udp->uh_dport));
+			inet_ntoa(ip->ip_src), ntohs(udp->source),
+			dst, ntohs(udp->dest));
 #endif
 #if defined(__linux__)
-			inet_ntoa(s), ntohs(udp->uh_sport),
-			dst, ntohs(udp->uh_dport));
+			inet_ntoa(s), ntohs(udp->source),
+			dst, ntohs(udp->dest));
 #endif
 		hexdump(buf, 31, 32);
 	}
 
-	if (ntohs(udp->uh_dport) != port)
+	if (ntohs(udp->dest) != port)
 		return;
 
 #if defined(__linux__)

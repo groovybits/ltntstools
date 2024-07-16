@@ -153,12 +153,7 @@ static void _compareStreams(struct tool_ctx_s *ctx, struct stream_s *stream, str
 
 		//printf("framenumber %d, wanted %d\n", e->sei_framenumber, element->sei_framenumber);
 		if (e->sei_framenumber == element->sei_framenumber) {
-
-			struct timeval diff;
-			struct timeval x = element->ts_seen;
-			struct timeval y = e->ts_seen;
-			ltn_histogram_timeval_subtract(&diff, &x, &y);
-			int ms = ltn_histogram_timeval_to_ms(&diff);
+			int ms = ltn_timeval_subtract_ms(&element->ts_seen, &e->ts_seen);
 
 			if (ctx->verbose) {
 
@@ -503,17 +498,17 @@ static void *source_pcap_raw_cb(void *userContext, const struct pcap_pkthdr *hdr
 #endif
 
 			char src[24], dst[24];
-			sprintf(src, "%s:%d", inet_ntoa(srcaddr), ntohs(udphdr->uh_sport));
-			sprintf(dst, "%s:%d", inet_ntoa(dstaddr), ntohs(udphdr->uh_dport));
+			sprintf(src, "%s:%d", inet_ntoa(srcaddr), ntohs(udphdr->source));
+			sprintf(dst, "%s:%d", inet_ntoa(dstaddr), ntohs(udphdr->dest));
 
 			printf("%s -> %s : %4d : %02x %02x %02x %02x\n",
 				
 				src, dst,
-				ntohs(udphdr->uh_ulen),
+				ntohs(udphdr->len),
 				ptr[0], ptr[1], ptr[2], ptr[3]);
 		}
 
-		int lengthPayloadBytes = ntohs(udphdr->uh_ulen) - sizeof(struct udphdr);
+		int lengthPayloadBytes = ntohs(udphdr->len) - sizeof(struct udphdr);
 		
 		if ((lengthPayloadBytes > 12) && ((lengthPayloadBytes - 12) % 188 == 0)) {
 			/* It's RTP */
