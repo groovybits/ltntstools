@@ -376,7 +376,7 @@ static int ltntstools_h264_iframe_thumbnailer_avframe_encode(struct ltntstools_h
 			fclose(fh);
 		}
 
-		g_nextThumbnailTime = time(0) + 1;
+		g_nextThumbnailTime = time(0) + 10;
 
         av_packet_unref(ctx->dec.pkt);
     }
